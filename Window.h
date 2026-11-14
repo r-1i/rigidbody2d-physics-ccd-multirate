@@ -4,18 +4,17 @@
 
 #include "PhysObject.h"
 #include <SDL2/SDL.h>
+#include <memory>
 
 class Window {
 public:
-	Window(int width, int height);
-	void AddToBuffer(PhysObject* physObject);
+	Window(int width, int height, std::vector<std::shared_ptr<PhysObject>>* pObjects);
 	void Render();
-	void ClearBuffer();
 
 private:
 	SDL_Renderer* m_renderer;
 	SDL_Window* m_window;
-	std::vector<PhysObject*> m_buffer;
+	std::vector<std::shared_ptr<PhysObject>>* pObjects;
 	int m_width;
 	int m_height;
 

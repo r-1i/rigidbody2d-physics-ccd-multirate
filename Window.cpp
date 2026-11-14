@@ -3,7 +3,8 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 
-Window::Window(int width, int height) : m_width(width), m_height(height)
+Window::Window(int width, int height, std::vector<std::shared_ptr<PhysObject>>* pObjects) 
+	: m_width(width), m_height(height), pObjects(pObjects)
 {
 	Init();
 }
@@ -25,18 +26,15 @@ void Window::Init()
 
 }
 
-
-void Window::AddToBuffer(PhysObject* physObject)
-{
-	m_buffer.push_back(physObject);
-}
-
 void Window::Render()
 {
-	for (const auto& body : m_buffer) {
+	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 0);
+	SDL_RenderClear(m_renderer);
+
+	for (const auto& body : *pObjects) {
 		switch (body->shapeType) {
 		case ShapeType::Circle:
-			filledCircleRGBA(m_renderer, body->pos.x, body->pos.y, body->radius, 255, 255, 255, 255);
+			filledCircleRGBA(m_renderer, body->pos.x, body->pos.y, body->radius, 0, 255, 0, 255);
 			break;
 		case ShapeType::AABB:
 			SDL_FRect rect {body->pos.x - body->halfExtents.x, body->pos.y - body->halfExtents.y,
@@ -48,9 +46,4 @@ void Window::Render()
 	}
 
 	SDL_RenderPresent(m_renderer);
-}
-
-void Window::ClearBuffer()
-{
-	m_buffer.clear();
 }
