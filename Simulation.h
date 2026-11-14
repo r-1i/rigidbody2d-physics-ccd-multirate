@@ -3,6 +3,7 @@
 #include <vector>
 #include "PhysObject.h"
 #include <memory>
+#include "CollisionData.h"
 
 class Simulation {
 public:
@@ -11,4 +12,8 @@ public:
 
 private:
 	std::vector<std::shared_ptr<PhysObject>>* pObjects;
+	CollisionData CollisionXY(const PhysObject& a, const PhysObject& b);
+	CollisionData CollisionCircleCircle(const PhysObject& a, const PhysObject& b);
+	CollisionData CollisionCircleAABB(const PhysObject& a, const PhysObject& b);
+	CollisionData CollisionAABBAABB(const PhysObject& a, const PhysObject& b);
 };

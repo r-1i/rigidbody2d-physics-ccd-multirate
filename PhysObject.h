@@ -13,11 +13,14 @@ public:
 	Vec2 pos;
 	Vec2 vel;
 	
-	ShapeType shapeType;
 	BodyType bodyType;
 	
 	float radius;
 	Vec2 halfExtents;
 
-	
+	ShapeType GetShapeType() const { return shapeType; }
+
+private:
+	ShapeType shapeType;
+
 };

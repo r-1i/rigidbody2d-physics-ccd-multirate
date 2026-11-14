@@ -6,9 +6,13 @@ Game::Game() : window(Window(800, 600, &objects)), simulation(Simulation(&object
 {
     for (int i = 0; i < 2; ++i) {
         std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
-            PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2((i+1)*75.0f, 50), Vec2(0.0f, 400.0f), 50.0f, Vec2(0,0)));
+            PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2((i+1)*125.0f, 50), Vec2(0.0f, 400.0f), 50.0f, Vec2(0,0)));
         objects.push_back(pCircle);
     }
+
+    
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 600), Vec2(0.0f, 0.0f), 0.0f, Vec2(400, 100))));
 }
 
 void Game::Run()

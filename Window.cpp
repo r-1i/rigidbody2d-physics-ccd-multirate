@@ -32,14 +32,14 @@ void Window::Render()
 	SDL_RenderClear(m_renderer);
 
 	for (const auto& body : *pObjects) {
-		switch (body->shapeType) {
+		switch (body->GetShapeType()) {
 		case ShapeType::Circle:
-			filledCircleRGBA(m_renderer, body->pos.x, body->pos.y, body->radius, 0, 255, 0, 255);
+			filledCircleRGBA(m_renderer, body->pos.x + body->radius, body->pos.y + body->radius, body->radius, 255, 255, 255, 255);
 			break;
 		case ShapeType::AABB:
 			SDL_FRect rect {body->pos.x - body->halfExtents.x, body->pos.y - body->halfExtents.y,
 					2.f * body->halfExtents.x, 2.f * body->halfExtents.y };
-			SDL_SetRenderDrawColor(m_renderer, 255, 0, 255, 255);
+			SDL_SetRenderDrawColor(m_renderer, 0, 255, 0, 255);
 			SDL_RenderFillRectF(m_renderer, &rect);
 			break;
 		}

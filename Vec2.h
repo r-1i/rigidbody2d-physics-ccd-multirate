@@ -18,6 +18,8 @@ struct Vec2 {
 
     static float Dot(Vec2 a, Vec2 b) { return a.x * b.x + a.y * b.y; }
     static float Cross(Vec2 a, Vec2 b) { return a.x * b.y - a.y * b.x; }
+    static float Distance(Vec2 a, Vec2 b) { return sqrt(pow((a.x - b.x), 2) + pow((a.y - b.y), 2)); }
+    static float DistanceSq(Vec2 a, Vec2 b) { return pow((a.x - b.x), 2) + pow((a.y-b.y), 2); }
 
     Vec2 operator+(Vec2 b)  const { return { x + b.x, y + b.y }; }
     Vec2 operator-(Vec2 b)  const { return { x - b.x, y - b.y }; }

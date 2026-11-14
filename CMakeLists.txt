@@ -12,7 +12,7 @@ endif()
 
 project ("rigidbody2d-ccd-multirate")
 
-add_executable (rigidbody2d-ccd-multirate "rigidbody2d-ccd-multirate.cpp"  "Window.h" "PhysObject.h" "Vec2.h" "Window.cpp" "PhysObject.cpp" "Game.h" "Game.cpp" "Simulation.h" "Simulation.cpp")
+add_executable (rigidbody2d-ccd-multirate "rigidbody2d-ccd-multirate.cpp"  "Window.h" "PhysObject.h" "Vec2.h" "Window.cpp" "PhysObject.cpp" "Game.h" "Game.cpp" "Simulation.h" "Simulation.cpp" "CollisionData.h")
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(sdl2-gfx CONFIG REQUIRED)
