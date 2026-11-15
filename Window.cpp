@@ -1,10 +1,12 @@
 #include "Window.h"
+#include "Game.h"
 #include <stdexcept>
 #include <SDL2/SDL2_gfxPrimitives.h>
+#include <string>
+#include <format>
 
-
-Window::Window(int width, int height, std::vector<std::shared_ptr<PhysObject>>* pObjects) 
-	: m_width(width), m_height(height), pObjects(pObjects)
+Window::Window(int width, int height, std::vector<std::shared_ptr<PhysObject>>* pObjects, const Game& game)
+	: m_width(width), m_height(height), pObjects(pObjects), game(game)
 {
 	Init();
 }
@@ -34,7 +36,7 @@ void Window::Render()
 	for (const auto& body : *pObjects) {
 		switch (body->GetShapeType()) {
 		case ShapeType::Circle:
-			filledCircleRGBA(m_renderer, body->pos.x + body->radius, body->pos.y + body->radius, body->radius, 255, 255, 255, 255);
+			filledCircleRGBA(m_renderer, body->pos.x, body->pos.y , body->radius, 255, 255, 255, 255);
 			break;
 		case ShapeType::AABB:
 			SDL_FRect rect {body->pos.x - body->halfExtents.x, body->pos.y - body->halfExtents.y,
@@ -44,6 +46,14 @@ void Window::Render()
 			break;
 		}
 	}
+
+	std::string textPhysicsFrames = "Physics Frames:  " + std::to_string(game.GetPhysicsFrameCount());
+	std::string textTimeFromStart = "Time from start: " + std::format("{:.2f}", game.GetTime());
+	std::string refreshRate =		"Refresh rate:    " + std::to_string(game.GetRefreshRate());
+
+	stringRGBA(m_renderer, m_width - 180, 20, textPhysicsFrames.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 180, 40, textTimeFromStart.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 180, 60, refreshRate.c_str(), 255, 255, 255, 255);
 
 	SDL_RenderPresent(m_renderer);
 }

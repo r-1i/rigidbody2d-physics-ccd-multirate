@@ -20,7 +20,14 @@ struct Vec2 {
     static float Cross(Vec2 a, Vec2 b) { return a.x * b.y - a.y * b.x; }
     static float Distance(Vec2 a, Vec2 b) { return sqrt(pow((a.x - b.x), 2) + pow((a.y - b.y), 2)); }
     static float DistanceSq(Vec2 a, Vec2 b) { return pow((a.x - b.x), 2) + pow((a.y-b.y), 2); }
-
+    static Vec2 Reflect(const Vec2& a, const Vec2& n) {
+        float dotProduct = Dot(a, n);
+        return Vec2(
+            a.x - 2.0f * dotProduct * n.x,
+            a.y - 2.0f * dotProduct * n.y
+        );
+    }
+    Vec2 operator-() const { return Vec2(-x, -y); }
     Vec2 operator+(Vec2 b)  const { return { x + b.x, y + b.y }; }
     Vec2 operator-(Vec2 b)  const { return { x - b.x, y - b.y }; }
     Vec2 operator*(float b) const { return { x * b, y * b }; }

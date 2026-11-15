@@ -12,6 +12,7 @@ public:
 	
 	Vec2 pos;
 	Vec2 vel;
+	float mass = 1.0f;
 	
 	BodyType bodyType;
 	
