@@ -29,4 +29,7 @@ private:
 	int currentRefreshRate = 0; 
 
 	float GetDeltaTime();
+	void InitScene1();
+	void InitScene2();
+	void InitScene3();
 };

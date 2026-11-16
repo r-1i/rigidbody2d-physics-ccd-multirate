@@ -19,17 +19,10 @@ Simulation::Simulation(std::vector<std::shared_ptr<PhysObject>>* pObjects) : pOb
 
 void Simulation::Update(float dt)
 {
-	ResolveCollisions();
-
-	for (auto& physObj : *pObjects) {
-		if (physObj->bodyType == BodyType::Static) continue;
-
-		physObj->vel += gravity * dt;
-		physObj->pos += physObj->vel * dt;
-	}
+	UpdateCCD(dt);
 }
 
-void Simulation::ResolveCollisions()
+void Simulation::ResolveCollisionsDiscrete()
 {
 	// Dynamic / Static
 	for (auto dyn : dynamicObjects) {
@@ -72,6 +65,259 @@ void Simulation::ResolveCollisions()
 				}
 			}
 		}
+	}
+}
+
+void Simulation::UpdateCCD(float dt)
+{
+	float timeRemaining = dt;
+	int maxIterations = 15; 
+
+	while (timeRemaining > 0 && maxIterations > 0) {
+		maxIterations--;
+
+		float min_tc = timeRemaining + 1.0f;
+		std::shared_ptr<PhysObject> hitA = nullptr;
+		CollisionDataCCD best_cd;
+
+		for (auto& dyn : dynamicObjects) {
+			CollisionDataCCD cd = FindClosestCollisionCCD(dyn, timeRemaining);
+			if (cd.tc >= 0.0f && cd.tc < min_tc) {
+				min_tc = cd.tc;
+				hitA = dyn;
+				best_cd = cd;
+			}
+		}
+
+		if (min_tc >= 0.0f && min_tc <= timeRemaining) {
+			for (auto& dyn : dynamicObjects) {
+				dyn->pos += dyn->vel * min_tc;
+				dyn->vel += gravity * min_tc;
+			}
+
+			if (best_cd.hitObject) {
+				if (best_cd.hitObject->bodyType == BodyType::Static) {
+					if (Vec2::Dot(hitA->vel, best_cd.normal) < 0) {
+						float e = 0.90f;
+						hitA->vel = Vec2::Reflect(hitA->vel, best_cd.normal) * e;
+					}
+				}
+				else if (best_cd.hitObject->bodyType == BodyType::Dynamic) {
+					auto hitB = best_cd.hitObject;
+					Vec2 relativeVel = hitA->vel - hitB->vel;
+					float velAlongNormal = Vec2::Dot(relativeVel, best_cd.normal);
+
+					if (velAlongNormal < 0) {
+						float e = 0.90f; 
+						float j = -(1.0f + e) * velAlongNormal / ((1.0f / hitA->mass) + (1.0f / hitB->mass));
+						Vec2 impulse = best_cd.normal * j;
+
+						hitA->vel += impulse / hitA->mass;
+						hitB->vel -= impulse / hitB->mass;
+					}
+				}
+			}
+
+			const float EPSILON = 0.01f;
+			hitA->pos += best_cd.normal * EPSILON;
+			if (best_cd.hitObject && best_cd.hitObject->bodyType == BodyType::Dynamic) {
+				best_cd.hitObject->pos -= best_cd.normal * EPSILON;
+			}
+
+			timeRemaining -= std::max(min_tc, 0.0001f);
+		}
+		else {
+			for (auto& dyn : dynamicObjects) {
+				dyn->pos += dyn->vel * timeRemaining;
+				dyn->vel += gravity * timeRemaining;
+			}
+			timeRemaining = 0;
+		}
+	}
+}
+
+CollisionDataCCD Simulation::FindClosestCollisionCCD(const std::shared_ptr<PhysObject>& physObject, float timeRemaining)
+{
+	CollisionDataCCD closestCollision;
+
+	closestCollision.tc = timeRemaining + 1.0f;
+
+	for (const auto& statObj : staticObjects) {
+		CollisionDataCCD cd = CollisionXY_CCD(physObject, statObj);
+
+		if (cd.tc >= 0.0f && cd.tc < closestCollision.tc) {
+			closestCollision = cd;
+			closestCollision.hitObject = statObj;
+		}
+	}
+
+	for (const auto& dynObj : dynamicObjects) {
+		if (physObject == dynObj) continue;
+
+		CollisionDataCCD cd = CollisionXY_CCD(physObject, dynObj);
+
+		if (cd.tc >= 0.0f && cd.tc < closestCollision.tc) {
+			closestCollision = cd;
+			closestCollision.hitObject = dynObj;
+		}
+	}
+
+	return closestCollision;
+}
+
+CollisionDataCCD Simulation::CollisionXY_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b)
+{
+	if (a->GetShapeType() == ShapeType::Circle && b->GetShapeType() == ShapeType::Circle) { return CollisionCircleCircle_CCD(a, b); }
+	else { return CollisionCircleAABB_CCD(a, b); }
+}
+
+CollisionDataCCD Simulation::CollisionCircleCircle_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b)
+{
+	CollisionDataCCD cd;
+	cd.tc = -1.0f;
+
+	Vec2 P = a->pos - b->pos; // vec between centers
+	Vec2 V = a->vel - b->vel; // relative pos
+
+	float R = a->radius + b->radius;
+
+	float a_coeff = Vec2::Dot(V, V); // relative vel squared
+	float b_coeff = 2.0f * Vec2::Dot(P, V);
+	float c_coeff = Vec2::Dot(P, P) - (R * R);
+
+	if (c_coeff <= 0.0f) {
+		cd.tc = 0.0f;
+		cd.normal = P.Normalized();
+		return cd;
+	}
+
+	// if relative vel equals zero, then circles moving in different ways
+	if (a_coeff < 1e-8f) {
+		return cd;
+	}
+
+	float D = b_coeff * b_coeff - 4.0f * a_coeff * c_coeff;
+	if (D < 0.0f) { // no roots
+		return cd;
+	}
+
+	float sqrtD = std::sqrt(D);
+	float t1 = (-b_coeff - sqrtD) / (2.0f * a_coeff);
+	float t2 = (-b_coeff + sqrtD) / (2.0f * a_coeff);
+
+	float t_c = -1.0f;
+	if (t1 >= 0.0f) { t_c = t1; }
+	else if (t2 >= 0.0f) { t_c = t2; }
+
+	if (t_c >= 0.0f) {
+		cd.tc = t_c;
+
+		Vec2 posA_tc = a->pos + (a->vel * t_c);
+		Vec2 posB_tc = b->pos + (b->vel * t_c);
+
+		cd.normal = (posA_tc - posB_tc).Normalized();
+	}
+
+	return cd;
+}
+
+CollisionDataCCD Simulation::CollisionCircleAABB_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b)
+{
+	CollisionDataCCD cd;
+	cd.tc = -1.0f;
+
+	auto circle = (a->GetShapeType() == ShapeType::Circle) ? a : b;
+	auto aabb = (a->GetShapeType() == ShapeType::AABB) ? a : b;
+
+	Vec2 v = circle->vel - aabb->vel;
+
+	if (v.LengthSq() < 1e-8f) {
+		return cd;
+	}
+
+	float r = circle->radius;
+	float minX = aabb->pos.x - aabb->halfExtents.x - r;
+	float maxX = aabb->pos.x + aabb->halfExtents.x + r;
+	float minY = aabb->pos.y - aabb->halfExtents.y - r;
+	float maxY = aabb->pos.y + aabb->halfExtents.y + r;
+
+	Vec2 p = circle->pos;
+
+	float txEntry, txExit;
+	Vec2 nx; 
+
+	if (std::abs(v.x) < 1e-8f) {
+		if (p.x < minX || p.x > maxX) return cd;
+		txEntry = -1e9f;
+		txExit = 1e9f;
+	}
+	else {
+		float tx1 = (minX - p.x) / v.x;
+		float tx2 = (maxX - p.x) / v.x;
+
+		if (tx1 < tx2) {
+			txEntry = tx1; txExit = tx2; nx = Vec2(-1, 0);
+		}
+		else {
+			txEntry = tx2; txExit = tx1; nx = Vec2(1, 0);
+		}
+	}
+
+	float tyEntry, tyExit;
+	Vec2 ny;
+
+	if (std::abs(v.y) < 1e-8f) {
+		if (p.y < minY || p.y > maxY) return cd;
+		tyEntry = -1e9f;
+		tyExit = 1e9f;
+	}
+	else {
+		float ty1 = (minY - p.y) / v.y;
+		float ty2 = (maxY - p.y) / v.y;
+
+		if (ty1 < ty2) {
+			tyEntry = ty1; 
+			tyExit = ty2; 
+			ny = Vec2(0, -1); 
+		}
+		else {
+			tyEntry = ty2; 
+			tyExit = ty1; 
+			ny = Vec2(0, 1); 
+		}
+	}
+
+	float tIn = std::max(txEntry, tyEntry);
+	float tOut = std::min(txExit, tyExit);
+
+	if (tIn > tOut || tOut < 0.0f) {
+		return cd;
+	}
+
+	if (tIn >= 0.0f) {
+		cd.tc = tIn;
+		Vec2 normal = (txEntry > tyEntry) ? nx : ny;
+
+		if (circle == b) {
+			cd.normal = -normal;
+		}
+		else {
+			cd.normal = normal;
+		}
+	}
+
+	return cd;
+}
+
+void Simulation::UpdateDiscrete(float dt)
+{
+	ResolveCollisionsDiscrete();
+
+	for (auto& physObj : *pObjects) {
+		if (physObj->bodyType == BodyType::Static) continue;
+
+		physObj->vel += gravity * dt;
+		physObj->pos += physObj->vel * dt;
 	}
 }
 
@@ -154,4 +400,3 @@ CollisionData Simulation::CollisionAABBAABB(const PhysObject& a, const PhysObjec
 {
 	return CollisionData();
 }
-

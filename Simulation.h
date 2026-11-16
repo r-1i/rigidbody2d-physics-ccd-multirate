@@ -12,7 +12,16 @@ public:
 	void InitializeGroups();
 
 private:
-	void ResolveCollisions();
+	void ResolveCollisionsDiscrete();
+	CollisionDataCCD FindClosestCollisionCCD(const std::shared_ptr<PhysObject>& physObject, float timeRemaining);
+
+	CollisionDataCCD CollisionXY_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b);
+	CollisionDataCCD CollisionCircleCircle_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b);
+	CollisionDataCCD CollisionCircleAABB_CCD(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b);
+
+	void UpdateDiscrete(float dt);
+	void UpdateCCD(float dt);
+
 
 	CollisionData CollisionXY(const PhysObject& a, const PhysObject& b);
 	CollisionData CollisionCircleCircle(const PhysObject& a, const PhysObject& b);

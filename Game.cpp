@@ -4,14 +4,7 @@
 
 Game::Game() : window(Window(800, 600, &objects, *this)), simulation(Simulation(&objects))
 {
-    currentRefreshRate = REFRESH_RATE_240;
-    std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
-        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(125.0f, 250.0f), Vec2(2000.0f, -400.0f), 5.0f, Vec2(0, 0)));
-    pCircle->mass = 10.0f;
-    objects.push_back(pCircle);
-
-    objects.push_back(std::make_shared<PhysObject>(
-        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(705, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(5, 300))));
+    InitScene1();
 
     simulation.InitializeGroups();
 }
@@ -80,4 +73,42 @@ float Game::GetDeltaTime()
     float dt = static_cast<float>(now - prevCounter) / static_cast<float>(freq);
     prevCounter = now;
     return dt;
+}
+
+void Game::InitScene1()
+{
+    currentRefreshRate = REFRESH_RATE_60;
+    std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(125.0f, 250.0f), Vec2(2000.0f, -400.0f), 5.0f, Vec2(0, 0)));
+    pCircle->mass = 10.0f;
+    objects.push_back(pCircle);
+
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(705, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(5, 300))));
+}
+
+void Game::InitScene2()
+{
+    currentRefreshRate = REFRESH_RATE_240;
+
+    // Circles
+
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(400, 300), Vec2(0.0f, 0.0f), 20.0f, Vec2(0,0))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(300, 300), Vec2(0.0f, 0.0f), 20.0f, Vec2(0, 0))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(500, 300), Vec2(0.0f, 0.0f), 20.0f, Vec2(0, 0))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(600, 300), Vec2(-200.0f, 0.0f), 20.0f, Vec2(0, 0))));
+
+    // Ground
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 600), Vec2(0.0f, 0.0f), 0.0f, Vec2(800, 100))));
+
+    // Walls
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(0, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(800, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
 }
