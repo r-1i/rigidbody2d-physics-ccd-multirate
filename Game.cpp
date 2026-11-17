@@ -4,7 +4,7 @@
 
 Game::Game() : window(Window(800, 600, &objects, *this)), simulation(Simulation(&objects))
 {
-    InitScene1();
+    InitSceneDiscrete();
 
     simulation.InitializeGroups();
 }
@@ -30,6 +30,15 @@ void Game::Run()
                 if (e.key.keysym.sym == SDLK_ESCAPE) {running = false;}
                 if (e.key.keysym.sym == SDLK_p) {isPaused = !isPaused;}
                 if (e.key.keysym.sym == SDLK_n && isPaused) {stepNextFrame = true;}
+                if (e.key.keysym.sym == SDLK_m) {
+                    int nextState = (static_cast<int>(currentState) + 1) % static_cast<int>(SceneState::Count);
+                    currentState = static_cast<SceneState>(nextState);
+
+                    LoadScene(currentState);
+                }
+                if (e.key.keysym.sym == SDLK_r) {
+                    LoadScene(currentState);
+                }
             }
         }
 
@@ -40,13 +49,13 @@ void Game::Run()
             accumulator += dt;
 
             while (accumulator >= FIXED_DT) {
-                simulation.Update(FIXED_DT);
+                simulation.Update(FIXED_DT, collisionMethod, GetPhysicsFrameCount());
                 physicsFrameCount++;
                 accumulator -= FIXED_DT;
             }
         } 
         else if (stepNextFrame) {
-            simulation.Update(FIXED_DT);
+            simulation.Update(FIXED_DT, collisionMethod, GetPhysicsFrameCount());
             timeFromStart += FIXED_DT;
             physicsFrameCount++;
             stepNextFrame = false;
@@ -67,6 +76,36 @@ float Game::GetTime() const
     return timeFromStart;
 }
 
+void Game::LoadScene(SceneState state) {
+    objects.clear();
+
+    physicsFrameCount = 0;
+    timeFromStart = 0.0f;
+
+    switch (state) {
+    case SceneState::DiscreteDemo:
+        collisionMethod = CollisionMethod::Discrete;
+        InitSceneDiscrete(); 
+        break;
+    case SceneState::CCDScene:
+        collisionMethod = CollisionMethod::CCD;
+        InitSceneCCD();        
+        break;
+    case SceneState::MultiRate1:
+        collisionMethod = CollisionMethod::MultiRate;
+        InitSceneMultiRate();
+        break;
+    case SceneState::MultiRate2:
+        collisionMethod = CollisionMethod::MultiRate;
+        //InitSceneMultiRate2();
+        break;
+    default:
+        break;
+    }
+
+    simulation.InitializeGroups();
+}
+
 float Game::GetDeltaTime()
 {
     Uint64 now = SDL_GetPerformanceCounter();
@@ -75,7 +114,7 @@ float Game::GetDeltaTime()
     return dt;
 }
 
-void Game::InitScene1()
+void Game::InitSceneDiscrete()
 {
     currentRefreshRate = REFRESH_RATE_60;
     std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
@@ -87,12 +126,19 @@ void Game::InitScene1()
         PhysObject(ShapeType::AABB, BodyType::Static, Vec2(705, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(5, 300))));
 }
 
-void Game::InitScene2()
+void Game::InitSceneCCD()
 {
-    currentRefreshRate = REFRESH_RATE_240;
+    currentRefreshRate = REFRESH_RATE_60;
+    std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(125.0f, 250.0f), Vec2(2000.0f, -400.0f), 5.0f, Vec2(0, 0)));
+    pCircle->mass = 10.0f;
+    objects.push_back(pCircle);
 
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(705, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(5, 300))));
+
+    /*
     // Circles
-
     objects.push_back(std::make_shared<PhysObject>(
         PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(400, 300), Vec2(0.0f, 0.0f), 20.0f, Vec2(0,0))));
     objects.push_back(std::make_shared<PhysObject>(
@@ -111,4 +157,48 @@ void Game::InitScene2()
         PhysObject(ShapeType::AABB, BodyType::Static, Vec2(0, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
     objects.push_back(std::make_shared<PhysObject>(
         PhysObject(ShapeType::AABB, BodyType::Static, Vec2(800, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
+    */
+}
+
+void Game::InitSceneMultiRate()
+{
+    currentRefreshRate = REFRESH_RATE_60;
+
+    std::shared_ptr<PhysObject> pCircle = std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(125.0f, 250.0f), Vec2(2000.0f, -400.0f), 5.0f, Vec2(0, 0), false));
+    pCircle->mass = 10.0f;
+    objects.push_back(pCircle);
+
+    std::shared_ptr<PhysObject> pfastCircle = std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(125.0f, 350.0f), Vec2(2000.0f, -400.0f), 5.0f, Vec2(0, 0), true));
+    pfastCircle->mass = 10.0f;
+    objects.push_back(pfastCircle);
+
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(705, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(5, 300))));
+
+    /*
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(50.0f, 300.0f), Vec2(2400.0f, 0.0f), 5.0f, Vec2(0, 0), true)));
+
+    // Ordinary circles
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(400, 100), Vec2(0.0f, 0.0f), 20.0f, Vec2(0, 0))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(500, 100), Vec2(-50.0f, 0.0f), 20.0f, Vec2(0, 0))));
+
+    // Thin wall — 20 px thick; bullet проходит 10 px за сабстеп 1/240
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(420, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(10, 100))));
+
+    // Ground
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 600), Vec2(0.0f, 0.0f), 0.0f, Vec2(800, 100))));
+
+    // Walls
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(0, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(800, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
+        */
 }

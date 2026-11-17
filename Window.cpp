@@ -50,10 +50,55 @@ void Window::Render()
 	std::string textPhysicsFrames = "Physics Frames:  " + std::to_string(game.GetPhysicsFrameCount());
 	std::string textTimeFromStart = "Time from start: " + std::format("{:.2f}", game.GetTime());
 	std::string refreshRate =		"Refresh rate:    " + std::to_string(game.GetRefreshRate());
+	std::string mode = "";
+	switch (game.GetCurrentState()) {
+	case SceneState::DiscreteDemo: 
+		mode = "Discrete Demo";
+		break;
+	case SceneState::CCDScene:
+		mode = "CCD Scene";
+		break;
+	case SceneState::MultiRate1:
+		mode = "Multi-rate 1";
+		break;
+	case SceneState::MultiRate2:
+		mode = "Multi-rate 2";
+		break;
+	}
+	std::string simulationMode = "Simulation mode :" + mode;
 
-	stringRGBA(m_renderer, m_width - 180, 20, textPhysicsFrames.c_str(), 255, 255, 255, 255);
-	stringRGBA(m_renderer, m_width - 180, 40, textTimeFromStart.c_str(), 255, 255, 255, 255);
-	stringRGBA(m_renderer, m_width - 180, 60, refreshRate.c_str(), 255, 255, 255, 255);
+	std::string colMethod = "";
+	switch (game.GetCurrentCollisionMethod()) {
+	case CollisionMethod::Discrete:
+		colMethod = "Discrete";
+		break;
+	case CollisionMethod::CCD:
+		colMethod = "CCD";
+		break;
+	case CollisionMethod::MultiRate:
+		colMethod = "Multi-rate";
+		break;
+	}
+	std::string collisionMethod = "Collision mode :" + colMethod;
+
+	/*
+	stringRGBA(m_renderer, m_width - 220, 20, textPhysicsFrames.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 220, 40, textTimeFromStart.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 220, 60, refreshRate.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 220, 80, simulationMode.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, m_width - 220, 100, collisionMethod.c_str(), 255, 255, 255, 255);
+	*/
+
+	stringRGBA(m_renderer, 0, 20, textPhysicsFrames.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer,0, 40, textTimeFromStart.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer,0, 60, refreshRate.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 80, simulationMode.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 100, collisionMethod.c_str(), 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 120, "Hotkeys: ", 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 140, "R (reload)", 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 160, "P (pause)", 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 180, "N (next step when paused)", 255, 255, 255, 255);
+	stringRGBA(m_renderer,0, 200, "M (next demo)", 255, 255, 255, 255);
 
 	SDL_RenderPresent(m_renderer);
 }

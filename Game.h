@@ -5,6 +5,14 @@
 #define REFRESH_RATE_60 60;
 #define REFRESH_RATE_240 240;
 
+enum class SceneState {
+	DiscreteDemo, 
+	CCDScene,     
+	MultiRate1,   
+	MultiRate2,   
+	Count         
+};
+
 class Game {
 public:
 	Game();
@@ -12,8 +20,13 @@ public:
 	int GetPhysicsFrameCount() const;
 	float GetTime() const;
 	int GetRefreshRate() const { return currentRefreshRate; }
+	SceneState GetCurrentState() const { return currentState; }
+	CollisionMethod GetCurrentCollisionMethod() const { return collisionMethod; }
 
 private:
+	SceneState currentState = SceneState::DiscreteDemo;
+	CollisionMethod collisionMethod = CollisionMethod::Discrete;
+	void LoadScene(SceneState state);
 	Window window;
 	Simulation simulation;
 	std::vector<std::shared_ptr<PhysObject>> objects;
@@ -29,7 +42,7 @@ private:
 	int currentRefreshRate = 0; 
 
 	float GetDeltaTime();
-	void InitScene1();
-	void InitScene2();
-	void InitScene3();
+	void InitSceneDiscrete();
+	void InitSceneCCD();
+	void InitSceneMultiRate();
 };

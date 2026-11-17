@@ -3,29 +3,30 @@
 
 Simulation::Simulation(std::vector<std::shared_ptr<PhysObject>>* pObjects) : pObjects(pObjects)
 {
-	for (const auto& pObj : *pObjects) {
-		switch (pObj->bodyType)
-		{
-		case BodyType::Static:
-			staticObjects.push_back(pObj);
-			break;
-
-		case BodyType::Dynamic:
-			dynamicObjects.push_back(pObj);
-			break;
-		}
-	}
+	InitializeGroups();
 }
 
-void Simulation::Update(float dt)
+void Simulation::Update(float dt, CollisionMethod method, int physFrameCount)
 {
-	UpdateCCD(dt);
+	switch (method)
+	{
+	case CollisionMethod::Discrete:
+		UpdateDiscrete(dt);
+		break;
+	case CollisionMethod::CCD:
+		UpdateCCD(dt);
+		break;
+
+	case CollisionMethod::MultiRate:
+		UpdateMultiRate(dt);
+		break;
+	}
 }
 
 void Simulation::ResolveCollisionsDiscrete()
 {
-	// Dynamic / Static
-	for (auto dyn : dynamicObjects) {
+	// Ordinary / Static
+	for (auto dyn : ordinaryObjects) {
 		for (auto stat : staticObjects) {
 			CollisionData cd = CollisionXY(*dyn, *stat);
 			if (cd.isColliding) {
@@ -38,32 +39,65 @@ void Simulation::ResolveCollisionsDiscrete()
 		}
 	}
 
-	// Dynamic / Dynamic
-	for (size_t i = 0; i < dynamicObjects.size(); ++i) {
-		for (size_t j = i + 1; j < dynamicObjects.size(); ++j) {
-			auto dyn1 = dynamicObjects[i];
-			auto dyn2 = dynamicObjects[j];
+	// Ordinary / Ordinary
+	for (size_t i = 0; i < ordinaryObjects.size(); ++i) {
+		for (size_t j = i + 1; j < ordinaryObjects.size(); ++j) {
+			ResolveDynamicPair(ordinaryObjects[i], ordinaryObjects[j]);
+		}
+	}
+}
 
-			CollisionData cd = CollisionXY(*dyn1, *dyn2);
+void Simulation::ResolveDynamicPair(const std::shared_ptr<PhysObject>& a, const std::shared_ptr<PhysObject>& b)
+{
+	CollisionData cd = CollisionXY(*a, *b);
+	if (!cd.isColliding) return;
+
+	a->pos -= cd.normal * (cd.penetration * 0.5f);
+	b->pos += cd.normal * (cd.penetration * 0.5f);
+
+	Vec2 relativeVel = b->vel - a->vel;
+
+	float velAlongNormal = Vec2::Dot(relativeVel, cd.normal);
+
+	if (velAlongNormal < 0) {
+		float e = 1.0f;
+
+		float j = -(1.0f + e) * velAlongNormal / ((1.0f / a->mass) + (1.0f / b->mass));
+
+		Vec2 impulse = cd.normal * j;
+
+		a->vel -= impulse / a->mass;
+		b->vel += impulse / b->mass;
+	}
+}
+
+void Simulation::ResolveFastCollisions()
+{
+	// Fast / Static
+	for (auto& fast : fastObjects) {
+		for (auto& stat : staticObjects) {
+			CollisionData cd = CollisionXY(*fast, *stat);
 			if (cd.isColliding) {
-				dyn1->pos += cd.normal * (cd.penetration * 0.5f);
-				dyn2->pos -= cd.normal * (cd.penetration * 0.5f);
+				fast->pos += cd.normal * cd.penetration;
 
-				Vec2 relativeVel = dyn2->vel - dyn1->vel;
-
-				float velAlongNormal = Vec2::Dot(relativeVel, cd.normal);
-
-				if (velAlongNormal < 0) {
-					float e = 1.0f;
-
-					float j = -(1.0f + e) * velAlongNormal / ((1.0f/dyn1->mass) + (1.0f / dyn2->mass));
-
-					Vec2 impulse = cd.normal * j;
-
-					dyn1->vel -= impulse / dyn1->mass;
-					dyn2->vel += impulse / dyn2->mass;
+				if (Vec2::Dot(fast->vel, cd.normal) < 0) {
+					fast->vel = Vec2::Reflect(fast->vel, cd.normal);
 				}
 			}
+		}
+	}
+
+	// Fast / Ordinary
+	for (auto& fast : fastObjects) {
+		for (auto& ord : ordinaryObjects) {
+			ResolveDynamicPair(fast, ord);
+		}
+	}
+
+	// Fast / Fast
+	for (size_t i = 0; i < fastObjects.size(); ++i) {
+		for (size_t j = i + 1; j < fastObjects.size(); ++j) {
+			ResolveDynamicPair(fastObjects[i], fastObjects[j]);
 		}
 	}
 }
@@ -80,7 +114,15 @@ void Simulation::UpdateCCD(float dt)
 		std::shared_ptr<PhysObject> hitA = nullptr;
 		CollisionDataCCD best_cd;
 
-		for (auto& dyn : dynamicObjects) {
+		for (auto& dyn : ordinaryObjects) {
+			CollisionDataCCD cd = FindClosestCollisionCCD(dyn, timeRemaining);
+			if (cd.tc >= 0.0f && cd.tc < min_tc) {
+				min_tc = cd.tc;
+				hitA = dyn;
+				best_cd = cd;
+			}
+		}
+		for (auto& dyn : fastObjects) {
 			CollisionDataCCD cd = FindClosestCollisionCCD(dyn, timeRemaining);
 			if (cd.tc >= 0.0f && cd.tc < min_tc) {
 				min_tc = cd.tc;
@@ -90,7 +132,11 @@ void Simulation::UpdateCCD(float dt)
 		}
 
 		if (min_tc >= 0.0f && min_tc <= timeRemaining) {
-			for (auto& dyn : dynamicObjects) {
+			for (auto& dyn : ordinaryObjects) {
+				dyn->pos += dyn->vel * min_tc;
+				dyn->vel += gravity * min_tc;
+			}
+			for (auto& dyn : fastObjects) {
 				dyn->pos += dyn->vel * min_tc;
 				dyn->vel += gravity * min_tc;
 			}
@@ -127,7 +173,11 @@ void Simulation::UpdateCCD(float dt)
 			timeRemaining -= std::max(min_tc, 0.0001f);
 		}
 		else {
-			for (auto& dyn : dynamicObjects) {
+			for (auto& dyn : ordinaryObjects) {
+				dyn->pos += dyn->vel * timeRemaining;
+				dyn->vel += gravity * timeRemaining;
+			}
+			for (auto& dyn : fastObjects) {
 				dyn->pos += dyn->vel * timeRemaining;
 				dyn->vel += gravity * timeRemaining;
 			}
@@ -151,7 +201,18 @@ CollisionDataCCD Simulation::FindClosestCollisionCCD(const std::shared_ptr<PhysO
 		}
 	}
 
-	for (const auto& dynObj : dynamicObjects) {
+	for (const auto& dynObj : ordinaryObjects) {
+		if (physObject == dynObj) continue;
+
+		CollisionDataCCD cd = CollisionXY_CCD(physObject, dynObj);
+
+		if (cd.tc >= 0.0f && cd.tc < closestCollision.tc) {
+			closestCollision = cd;
+			closestCollision.hitObject = dynObj;
+		}
+	}
+
+	for (const auto& dynObj : fastObjects) {
 		if (physObject == dynObj) continue;
 
 		CollisionDataCCD cd = CollisionXY_CCD(physObject, dynObj);
@@ -312,6 +373,7 @@ CollisionDataCCD Simulation::CollisionCircleAABB_CCD(const std::shared_ptr<PhysO
 void Simulation::UpdateDiscrete(float dt)
 {
 	ResolveCollisionsDiscrete();
+	ResolveFastCollisions();
 
 	for (auto& physObj : *pObjects) {
 		if (physObj->bodyType == BodyType::Static) continue;
@@ -324,13 +386,19 @@ void Simulation::UpdateDiscrete(float dt)
 void Simulation::InitializeGroups()
 {
 	staticObjects.clear();
-	dynamicObjects.clear();
+	ordinaryObjects.clear();
+	fastObjects.clear();
 
 	for (const auto& pObj : *pObjects) {
-		if (pObj->bodyType == BodyType::Static)
+		if (pObj->bodyType == BodyType::Static) {
 			staticObjects.push_back(pObj);
-		else if (pObj->bodyType == BodyType::Dynamic)
-			dynamicObjects.push_back(pObj);
+		}
+		else if (pObj->bodyType == BodyType::Dynamic) {
+			if (pObj->isFast)
+				fastObjects.push_back(pObj);
+			else
+				ordinaryObjects.push_back(pObj);
+		}
 	}
 }
 
@@ -399,4 +467,25 @@ CollisionData Simulation::CollisionCircleAABB(const PhysObject& a, const PhysObj
 CollisionData Simulation::CollisionAABBAABB(const PhysObject& a, const PhysObject& b)
 {
 	return CollisionData();
+}
+
+void Simulation::UpdateMultiRate(float dt)
+{
+	const int subSteps = 4;
+	const float sub_dt = dt / static_cast<float>(subSteps);
+
+	ResolveCollisionsDiscrete();
+	for (auto& obj : ordinaryObjects) {
+		obj->vel += gravity * dt;
+		obj->pos += obj->vel * dt;
+	}
+
+	for (int i = 0; i < subSteps; ++i) {
+		ResolveFastCollisions();
+
+		for (auto& obj : fastObjects) {
+			obj->vel += gravity * sub_dt;
+			obj->pos += obj->vel * sub_dt;
+		}
+	}
 }

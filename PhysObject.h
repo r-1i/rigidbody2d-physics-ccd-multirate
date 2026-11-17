@@ -7,8 +7,8 @@ enum class BodyType { Static, Dynamic };
 
 class PhysObject {
 public:
-	PhysObject(ShapeType shapeType, BodyType bodyType, Vec2 pos, Vec2 vel, float radius, Vec2 halfExtents) 
-		: shapeType(shapeType), bodyType(bodyType), pos(pos), vel(vel), radius(radius), halfExtents(halfExtents) {};
+	PhysObject(ShapeType shapeType, BodyType bodyType, Vec2 pos, Vec2 vel, float radius, Vec2 halfExtents, bool isFast = false) 
+		: shapeType(shapeType), bodyType(bodyType), pos(pos), vel(vel), radius(radius), halfExtents(halfExtents), isFast(isFast){};
 	
 	Vec2 pos;
 	Vec2 vel;
@@ -18,6 +18,8 @@ public:
 	
 	float radius;
 	Vec2 halfExtents;
+
+	bool isFast = false;
 
 	ShapeType GetShapeType() const { return shapeType; }
 
