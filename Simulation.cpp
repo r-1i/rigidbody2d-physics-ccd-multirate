@@ -60,7 +60,7 @@ void Simulation::ResolveDynamicPair(const std::shared_ptr<PhysObject>& a, const 
 	float velAlongNormal = Vec2::Dot(relativeVel, cd.normal);
 
 	if (velAlongNormal < 0) {
-		float e = 1.0f;
+		float e = std::max(a->e, b->e);
 
 		float j = -(1.0f + e) * velAlongNormal / ((1.0f / a->mass) + (1.0f / b->mass));
 
@@ -144,7 +144,7 @@ void Simulation::UpdateCCD(float dt)
 			if (best_cd.hitObject) {
 				if (best_cd.hitObject->bodyType == BodyType::Static) {
 					if (Vec2::Dot(hitA->vel, best_cd.normal) < 0) {
-						float e = 0.90f;
+						float e = std::max(hitA->e, best_cd.hitObject->e);
 						hitA->vel = Vec2::Reflect(hitA->vel, best_cd.normal) * e;
 					}
 				}
@@ -154,7 +154,7 @@ void Simulation::UpdateCCD(float dt)
 					float velAlongNormal = Vec2::Dot(relativeVel, best_cd.normal);
 
 					if (velAlongNormal < 0) {
-						float e = 0.90f; 
+						float e = std::max(hitA->e, hitB->e);
 						float j = -(1.0f + e) * velAlongNormal / ((1.0f / hitA->mass) + (1.0f / hitB->mass));
 						Vec2 impulse = best_cd.normal * j;
 
@@ -290,12 +290,6 @@ CollisionDataCCD Simulation::CollisionCircleAABB_CCD(const std::shared_ptr<PhysO
 	auto circle = (a->GetShapeType() == ShapeType::Circle) ? a : b;
 	auto aabb = (a->GetShapeType() == ShapeType::AABB) ? a : b;
 
-	Vec2 v = circle->vel - aabb->vel;
-
-	if (v.LengthSq() < 1e-8f) {
-		return cd;
-	}
-
 	float r = circle->radius;
 	float minX = aabb->pos.x - aabb->halfExtents.x - r;
 	float maxX = aabb->pos.x + aabb->halfExtents.x + r;
@@ -303,6 +297,30 @@ CollisionDataCCD Simulation::CollisionCircleAABB_CCD(const std::shared_ptr<PhysO
 	float maxY = aabb->pos.y + aabb->halfExtents.y + r;
 
 	Vec2 p = circle->pos;
+
+	// initial penetration: circle center is already inside the expanded AABB
+	if (p.x > minX && p.x < maxX && p.y > minY && p.y < maxY) {
+		float left = p.x - minX;
+		float right = maxX - p.x;
+		float top = p.y - minY;
+		float bottom = maxY - p.y;
+
+		Vec2 normal(0, 1);
+		float minPen = bottom;
+		if (top < minPen)    { minPen = top;    normal = Vec2(0, -1); }
+		if (left < minPen)   { minPen = left;   normal = Vec2(-1, 0); }
+		if (right < minPen)  { minPen = right;  normal = Vec2(1, 0); }
+
+		cd.tc = 0.0f;
+		cd.normal = (circle == b) ? -normal : normal;
+		return cd;
+	}
+
+	Vec2 v = circle->vel - aabb->vel;
+
+	if (v.LengthSq() < 1e-8f) {
+		return cd;
+	}
 
 	float txEntry, txExit;
 	Vec2 nx; 

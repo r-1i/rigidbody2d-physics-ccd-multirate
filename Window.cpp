@@ -64,6 +64,12 @@ void Window::Render()
 	case SceneState::MultiRate2:
 		mode = "Multi-rate 2";
 		break;
+	case SceneState::StackDiscrete:
+		mode = "Stack Discrete";
+		break;
+	case SceneState::StackCCD:
+		mode = "Stack CCD";
+		break;
 	}
 	std::string simulationMode = "Simulation mode :" + mode;
 
@@ -89,6 +95,9 @@ void Window::Render()
 	stringRGBA(m_renderer, m_width - 220, 100, collisionMethod.c_str(), 255, 255, 255, 255);
 	*/
 
+	std::string textPhysicsTime = "Physics Step (ms): " + std::format("{:.4f}", game.GetPhysicsStepTimeMs());
+
+
 	stringRGBA(m_renderer, 0, 20, textPhysicsFrames.c_str(), 255, 255, 255, 255);
 	stringRGBA(m_renderer,0, 40, textTimeFromStart.c_str(), 255, 255, 255, 255);
 	stringRGBA(m_renderer,0, 60, refreshRate.c_str(), 255, 255, 255, 255);
@@ -99,6 +108,7 @@ void Window::Render()
 	stringRGBA(m_renderer, 0, 160, "P (pause)", 255, 255, 255, 255);
 	stringRGBA(m_renderer, 0, 180, "N (next step when paused)", 255, 255, 255, 255);
 	stringRGBA(m_renderer,0, 200, "M (next demo)", 255, 255, 255, 255);
+	stringRGBA(m_renderer, 0, 220, textPhysicsTime.c_str(), 255, 255, 255, 255);
 
 	SDL_RenderPresent(m_renderer);
 }

@@ -49,13 +49,25 @@ void Game::Run()
             accumulator += dt;
 
             while (accumulator >= FIXED_DT) {
+                Uint64 stepStart = SDL_GetPerformanceCounter();
+
                 simulation.Update(FIXED_DT, collisionMethod, GetPhysicsFrameCount());
+
+                Uint64 stepEnd = SDL_GetPerformanceCounter();
+                lastPhysicsStepTimeMs = static_cast<float>(stepEnd - stepStart) * 1000.0f / static_cast<float>(freq);
+
                 physicsFrameCount++;
                 accumulator -= FIXED_DT;
             }
         } 
         else if (stepNextFrame) {
+            Uint64 stepStart = SDL_GetPerformanceCounter();
+
             simulation.Update(FIXED_DT, collisionMethod, GetPhysicsFrameCount());
+
+            Uint64 stepEnd = SDL_GetPerformanceCounter();
+            lastPhysicsStepTimeMs = static_cast<float>(stepEnd - stepStart) * 1000.0f / static_cast<float>(freq);
+
             timeFromStart += FIXED_DT;
             physicsFrameCount++;
             stepNextFrame = false;
@@ -85,7 +97,7 @@ void Game::LoadScene(SceneState state) {
     switch (state) {
     case SceneState::DiscreteDemo:
         collisionMethod = CollisionMethod::Discrete;
-        InitSceneDiscrete(); 
+        InitSceneDiscrete();
         break;
     case SceneState::CCDScene:
         collisionMethod = CollisionMethod::CCD;
@@ -97,7 +109,15 @@ void Game::LoadScene(SceneState state) {
         break;
     case SceneState::MultiRate2:
         collisionMethod = CollisionMethod::MultiRate;
-        //InitSceneMultiRate2();
+        InitSceneMultiRate2();
+        break;
+    case SceneState::StackDiscrete:
+        collisionMethod = CollisionMethod::Discrete;
+        InitSceneStackDiscrete();
+        break;
+    case SceneState::StackCCD:
+        collisionMethod = CollisionMethod::CCD;
+        InitSceneStackCCD();
         break;
     default:
         break;
@@ -187,7 +207,7 @@ void Game::InitSceneMultiRate()
     objects.push_back(std::make_shared<PhysObject>(
         PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(500, 100), Vec2(-50.0f, 0.0f), 20.0f, Vec2(0, 0))));
 
-    // Thin wall — 20 px thick; bullet проходит 10 px за сабстеп 1/240
+    // Thin wall — 20 px thick; bullet passes 10 px per 1/240 substep
     objects.push_back(std::make_shared<PhysObject>(
         PhysObject(ShapeType::AABB, BodyType::Static, Vec2(420, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(10, 100))));
 
@@ -201,4 +221,74 @@ void Game::InitSceneMultiRate()
     objects.push_back(std::make_shared<PhysObject>(
         PhysObject(ShapeType::AABB, BodyType::Static, Vec2(800, 300), Vec2(0.0f, 0.0f), 0.0f, Vec2(100, 300))));
         */
+}
+
+void Game::InitSceneMultiRate2()
+{
+    currentRefreshRate = REFRESH_RATE_60;
+
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 580), Vec2(0, 0), 0.0f, Vec2(400, 20)))); // floor
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 20), Vec2(0, 0), 0.0f, Vec2(400, 20)))); // celling
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(20, 300), Vec2(0, 0), 0.0f, Vec2(20, 300)))); // left wall
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(780, 300), Vec2(0, 0), 0.0f, Vec2(20, 300)))); // right wall
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 300), Vec2(0, 0), 0.0f, Vec2(100, 20)))); // platform
+
+    // Slow objects
+    for (int i = 0; i < 40; ++i) {
+        float x = 100.0f + (i % 10) * 60.0f; 
+        float y = 100.0f + (i / 10) * 40.0f; 
+        float radius = 8.0f;
+
+        auto ordObj = std::make_shared<PhysObject>(
+            PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(x, y), Vec2(0, 0), radius, Vec2(0, 0), false));
+        ordObj->mass = radius;
+        objects.push_back(ordObj);
+    }
+
+    // Fast objects
+    for (int i = 0; i < 5; ++i) {
+        float y = 400.0f + i * 30.0f;
+        auto fastObj = std::make_shared<PhysObject>(
+            PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(80.0f, y), Vec2(1800.0f, -150.0f), 5.0f, Vec2(0, 0), true));
+        fastObj->mass = 5.0f;
+        objects.push_back(fastObj);
+    }
+}
+
+void Game::InitSceneStackDiscrete()
+{
+    currentRefreshRate = REFRESH_RATE_60;
+    BuildStackScene();
+}
+
+void Game::InitSceneStackCCD()
+{
+    currentRefreshRate = REFRESH_RATE_60;
+    BuildStackScene();
+}
+
+void Game::BuildStackScene()
+{
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(400, 580), Vec2(0, 0), 0.0f, Vec2(200, 20))));
+
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(230, 400), Vec2(0, 0), 0.0f, Vec2(10, 200))));
+    objects.push_back(std::make_shared<PhysObject>(
+        PhysObject(ShapeType::AABB, BodyType::Static, Vec2(570, 400), Vec2(0, 0), 0.0f, Vec2(10, 200))));
+
+    for (int i = 0; i < 50; ++i) {
+        float startX = 280.0f + (i % 10) * 25.0f; 
+        float startY = 100.0f + (i / 10) * 25.0f;
+
+        auto obj = std::make_shared<PhysObject>(
+            PhysObject(ShapeType::Circle, BodyType::Dynamic, Vec2(startX, startY), Vec2(0, 0), 10.0f, Vec2(0, 0), false));
+        obj->mass = 10.0f;
+        objects.push_back(obj);
+    }
 }

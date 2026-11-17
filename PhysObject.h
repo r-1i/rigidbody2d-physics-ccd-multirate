@@ -7,19 +7,21 @@ enum class BodyType { Static, Dynamic };
 
 class PhysObject {
 public:
-	PhysObject(ShapeType shapeType, BodyType bodyType, Vec2 pos, Vec2 vel, float radius, Vec2 halfExtents, bool isFast = false) 
-		: shapeType(shapeType), bodyType(bodyType), pos(pos), vel(vel), radius(radius), halfExtents(halfExtents), isFast(isFast){};
-	
+	PhysObject(ShapeType shapeType, BodyType bodyType, Vec2 pos, Vec2 vel, float radius, Vec2 halfExtents, bool isFast = false, float e = 0.5f)
+		: shapeType(shapeType), bodyType(bodyType), pos(pos), vel(vel), radius(radius), halfExtents(halfExtents), isFast(isFast), e(e){};
+
 	Vec2 pos;
 	Vec2 vel;
 	float mass = 1.0f;
-	
+
 	BodyType bodyType;
-	
+
 	float radius;
 	Vec2 halfExtents;
 
 	bool isFast = false;
+
+	float e = 0.5f; // coefficient of restitution
 
 	ShapeType GetShapeType() const { return shapeType; }
 

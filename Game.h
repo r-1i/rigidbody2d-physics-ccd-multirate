@@ -6,11 +6,13 @@
 #define REFRESH_RATE_240 240;
 
 enum class SceneState {
-	DiscreteDemo, 
-	CCDScene,     
-	MultiRate1,   
-	MultiRate2,   
-	Count         
+	DiscreteDemo,
+	CCDScene,
+	MultiRate1,
+	MultiRate2,
+	StackDiscrete,
+	StackCCD,
+	Count
 };
 
 class Game {
@@ -22,8 +24,12 @@ public:
 	int GetRefreshRate() const { return currentRefreshRate; }
 	SceneState GetCurrentState() const { return currentState; }
 	CollisionMethod GetCurrentCollisionMethod() const { return collisionMethod; }
+	float GetPhysicsStepTimeMs() const { return lastPhysicsStepTimeMs; }
+
 
 private:
+	float lastPhysicsStepTimeMs = 0.0f;
+
 	SceneState currentState = SceneState::DiscreteDemo;
 	CollisionMethod collisionMethod = CollisionMethod::Discrete;
 	void LoadScene(SceneState state);
@@ -45,4 +51,8 @@ private:
 	void InitSceneDiscrete();
 	void InitSceneCCD();
 	void InitSceneMultiRate();
+	void InitSceneMultiRate2();
+	void InitSceneStackDiscrete();
+	void InitSceneStackCCD();
+	void BuildStackScene();
 };
