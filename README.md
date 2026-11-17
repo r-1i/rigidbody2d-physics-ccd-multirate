@@ -38,39 +38,39 @@ cmake --build --preset x64-release
 Δt = 1/60 с. Снаряд проходит ~33 px за шаг — больше толщины стены, поэтому
 геометрическое пересечение не регистрируется и объект «телепортируется»
 сквозь препятствие.
-![Дискретный режим: туннелирование снаряда](<img width="793" height="598" alt="PHYS_0" src="https://github.com/user-attachments/assets/0b8a89fe-e23e-4e51-b505-22fd7ea0261c" />
-)
+<img width="793" height="598" alt="PHYS_0" src="https://github.com/user-attachments/assets/0b8a89fe-e23e-4e51-b505-22fd7ea0261c" />
+
 ### 2. CCD (CCDScene)
 Та же сцена, но столкновения решаются через CCD: время первого контакта
 находится аналитически, объекты перемещаются к моменту столкновения,
 скорость упруго отражается от нормали. Снаряд корректно отскакивает от
 тонкой стены.
-![CCD: корректное столкновение со стеной](<img width="793" height="598" alt="PHYS_1" src="https://github.com/user-attachments/assets/19431d30-0a84-444a-9c1b-01e143ba1fab" />
-)
+<img width="793" height="598" alt="PHYS_1" src="https://github.com/user-attachments/assets/19431d30-0a84-444a-9c1b-01e143ba1fab" />
+
 ### 3. Multi-rate, сцена 1 (MultiRate1)
 Два одинаковых шарика на одной скорости: верхний — обычный (60 Гц),
 нижний — быстрый (240 Гц). Обычный шарик пролетает сквозь тонкую стену,
 быстрый успевает зарегистрировать столкновение и отскакивает.
-![Multi-rate: 60 Гц vs 240 Гц](<img width="793" height="598" alt="PHYS_2" src="https://github.com/user-attachments/assets/c9a10d1b-ab8b-4053-b7aa-1193a5d7eaf0" />
-)
+<img width="793" height="598" alt="PHYS_2" src="https://github.com/user-attachments/assets/c9a10d1b-ab8b-4053-b7aa-1193a5d7eaf0" />
+
 ### 4. Multi-rate, сцена 2 (MultiRate2)
 Массовая сцена: 40 медленных объектов (крупные круги, 60 Гц), 10 быстрых
 снарядов (маленькие круги, 240 Гц) и 4 статичные стены. На один шаг медленного
 объекта приходится 4 микро-шага быстрых.
 <img width="793" height="598" alt="PHYS_3" src="https://github.com/user-attachments/assets/cd6f4b0f-351f-40fc-b796-4962e7106209"/>
-)
+
 ### 5. Стек из 50 шаров — дискретный режим (StackDiscrete)
 Обрушение стека из 50 шаров в стакан при дискретном методе. Позиционная
 коррекция не даёт проникновению накапливаться, куча стабилизируется у дна,
 но отдельные шары сохраняют остаточное дрожание в покое.
-![Стек шаров: дискретный режим](<img width="793" height="598" alt="PHYS_4" src="https://github.com/user-attachments/assets/801a7bc6-1bba-4bef-bb7e-7777c9ca5711" />
-)
+<img width="793" height="598" alt="PHYS_4" src="https://github.com/user-attachments/assets/801a7bc6-1bba-4bef-bb7e-7777c9ca5711" />
+
 ### 6. Стек из 50 шаров — CCD (StackCCD)
 Та же сцена в режиме CCD: столкновения разрешаются в точном моменте входа
 в контакт, проваливания и визуальные «вдавливания» тел друг в друга
 отсутствуют.
-![Стек шаров: CCD](<img width="793" height="598" alt="PHYS_5" src="https://github.com/user-attachments/assets/7fa9bc02-b76e-4b48-8fd8-3769f04a9d52" />
-)
+<img width="793" height="598" alt="PHYS_5" src="https://github.com/user-attachments/assets/7fa9bc02-b76e-4b48-8fd8-3769f04a9d52" />
+
 ## Сравнение подходов
 | Подход | Устойчивость | Детерминированность | Быстрые объекты | ms/frame |
 |---|---|---|---|---|
